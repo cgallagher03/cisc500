@@ -12,12 +12,12 @@ def save_buffered_data():
     print("Checkpoint reached")
     mode = ""
     if buffer:
-        if os.path.exists("pull_requests_all_with_checkbox_data.csv"):
+        if os.path.exists("data/pull_requests_all_with_checkbox_data.csv"):
             mode = "a"  
             print("Found existing file.")
         else:
             mode = "w"
-        with open("pull_requests_all_with_checkbox_data.csv", mode, newline="", encoding="utf-8") as file:
+        with open("data/pull_requests_all_with_checkbox_data.csv", mode, newline="", encoding="utf-8") as file:
             writer = csv.writer(file)
             if mode == "w":
                 writer.writerow(["PR Number", "Title", "Created At", "Updated At", "State", 
@@ -52,8 +52,8 @@ def get_last_processed_pr():
     last_pr = None
     
     # Check if the output CSV exists and get the last PR number if it does
-    if os.path.exists("pull_requests_all_with_checkbox_data.csv"):
-        with open("pull_requests_all_with_checkbox_data.csv", mode="r", encoding="utf-8") as outfile:
+    if os.path.exists("data/pull_requests_all_with_checkbox_data.csv"):
+        with open("data/pull_requests_all_with_checkbox_data.csv", mode="r", encoding="utf-8") as outfile:
             reader = csv.DictReader(outfile)
             rows = list(reader)
             if rows:
@@ -67,7 +67,7 @@ def add_checkbox_data():
     last_pr = get_last_processed_pr()
     
     # Read the CSV into a list and sort in descending order of PR numbers
-    with open("pull_requests_all.csv", mode="r", encoding="utf-8") as infile:
+    with open("data/pull_requests_all.csv", mode="r", encoding="utf-8") as infile:
         reader = list(csv.DictReader(infile))
         reader.sort(key=lambda row: int(row["PR Number"]), reverse=True)
 
@@ -122,4 +122,4 @@ def add_checkbox_data():
 if __name__ == "__main__":
     print("Starting Part 2: Adding checkbox data to PR metadata...")
     add_checkbox_data()
-    print("Checkbox data added. Results saved to pull_requests_all_with_checkbox_data.csv.")
+    print("Checkbox data added. Results saved to data/pull_requests_all_with_checkbox_data.csv.")
