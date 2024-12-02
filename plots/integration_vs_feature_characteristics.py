@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv("../data/pull_requests_filtered.csv")
+df = pd.read_csv("data/pull_requests_filtered.csv")
 
 # Filter rows based on "Type of Change"
 new_integration_prs = df[df['Type of Change'].str.contains('New integration')]
