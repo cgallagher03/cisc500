@@ -10,17 +10,46 @@ load_dotenv()
 GITHUB_API_KEY = environ.get("GITHUB_PAT_1")
 client = OpenAI()   # automatically gets api key from env under OPENAI_API_KEY
 
-df = pd.read_csv('data/pull_requests_complex_features.csv').head(30)
+author = 'YogevBokobza'
 
-response = requests.get("https://api.github.com/repos/home-assistant/core/issues/127277/comments", headers={"Authorization": f"Bearer {GITHUB_API_KEY}"})
-comment_data = response.json()
-issue_comment_bodies = [comment['body'] for comment in comment_data if comment['user']['type'] != 'Bot']
+def fetch_issue_comments():
+    response = requests.get("https://api.github.com/repos/home-assistant/core/issues/127277/comments", headers={"Authorization": f"Bearer {GITHUB_API_KEY}"})
+    issue_comment_data = response.json()
+    return [{'type': 'issue', 'timestamp': comment['created_at'], 'body': comment['body'], 'is_from_author': comment['user']['login'] == author} for comment in issue_comment_data if comment['user']['type'] != 'Bot']
 
-response = requests.get("https://api.github.com/repos/home-assistant/core/pulls/127277/comments", headers={"Authorization": f"Bearer {GITHUB_API_KEY}"})
-comment_data = response.json()
-review_comment_bodies = [comment['body'] for comment in comment_data]
+def fetch_review_comments():
+    response = requests.get("https://api.github.com/repos/home-assistant/core/pulls/127277/comments", headers={"Authorization": f"Bearer {GITHUB_API_KEY}"})
+    review_comment_data = response.json()
+    return [{'type': 'review', 'timestamp': comment['created_at'], 'body': comment['body'], 'is_from_author': comment['user']['login'] == author} for comment in review_comment_data]
 
-body = f"ISSUE COMMENT BODIES: \n{issue_comment_bodies}\n\nREVIEW COMMENT BODIES: \n{review_comment_bodies}"
+def merge_comments(issue_comments, review_comments):
+    merged = []
+    i, j = 0, 0
+    
+    # merge while both lists have elements
+    while i < len(review_comments) and j < len(issue_comments):
+        if review_comments[i]['timestamp'] <= issue_comments[j]['timestamp']:
+            merged.append(review_comments[i])
+            i += 1
+        else:
+            merged.append(issue_comments[j])
+            j += 1
+
+    # add remaining elements from non-exhausted list
+    merged.extend(review_comments[i:])
+    merged.extend(issue_comments[j:])
+    
+    return merged
+
+issue_comments = fetch_issue_comments()
+review_comments = fetch_review_comments()
+
+comments = merge_comments(issue_comments, review_comments)
+formatted_bodies = [
+    f"({comment['type']} comment from {'author' if comment['is_from_author'] else 'reviewer'}) [{comment['timestamp']}] {comment['body']}" 
+    for comment in comments
+]
+prompt_body = "\n".join(formatted_bodies)
 
 class CommentCategoriesExtraction(BaseModel):
     categories: list[str]
@@ -29,9 +58,9 @@ chat_response = client.beta.chat.completions.parse(
     model="gpt-4o-mini",
     messages=[
         {"role": "system", "content": "You are a helpful assistant that analyzes pull request comments within the Home Assistant repository to categorize challenges faced when developing device integrations, and returns a list of them. If not categorizable, use 'Other'."},
-        {"role": "user", "content": f"{body}"},
+        {"role": "user", "content": f"{prompt_body}"},
         {"role": "assistant", "content": "categories=['Testing Issues', 'Naming/ID Issues', 'Code Structure Issues', 'Communication Issues', 'Review Process Issues', 'Other']"},
-        {"role": "user", "content": f"Can you make sure any Home Assistant/Smart home specific concepts are captured: {body}"}
+        {"role": "user", "content": f"Can you make sure any Home Assistant/Smart home specific concepts are captured: {prompt_body}"}
     ],
     response_format=CommentCategoriesExtraction
 )
