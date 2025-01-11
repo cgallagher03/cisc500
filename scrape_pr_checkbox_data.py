@@ -1,7 +1,6 @@
 import csv
 import requests
 from bs4 import BeautifulSoup
-import time
 import os
 
 buffer = []  # Buffer for batching PR data
@@ -21,7 +20,7 @@ def save_buffered_data():
             writer = csv.writer(file)
             if mode == "w":
                 writer.writerow(["PR Number", "Title", "Author", "Integration", "Created At", "Updated At", "State", 
-                                 "Files Changed", "LOC Changed", "Total Comments", "Decision Time", "Closed Date", "URL", "Type of Change"])
+                                 "Files Changed", "Decision Time", "Closed Date", "URL", "Type of Change"])
             writer.writerows(buffer)  # Write all buffered rows at once
         buffer.clear()  # Clear buffer after writing
 
@@ -50,73 +49,57 @@ def get_pr_checkbox_data(pr_html_url):
 # Load last PR number from output CSV if it exists, otherwise fallback to progress file
 def get_last_processed_pr():
     last_pr = None
-    
-    # Check if the output CSV exists and get the last PR number if it does
     if os.path.exists("data/pull_requests_all_with_checkbox_data.csv"):
-        with open("data/pull_requests_all_with_checkbox_data.csv", mode="r", encoding="utf-8") as outfile:
-            reader = csv.DictReader(outfile)
-            rows = list(reader)
-            if rows:
-                last_pr = int(rows[-1]["PR Number"])  # Get the PR Number from the last row in the CSV
-
+        with open("data/pull_requests_all_with_checkbox_data.csv", mode="r", encoding="utf-8") as f:
+            last_row = list(csv.reader(f))[-1]
+            last_pr = int(last_row[0])
     return last_pr
 
 
 # Process PRs and add checkbox data
 def add_checkbox_data():
-    last_pr = get_last_processed_pr()
+    last_processed_pr = get_last_processed_pr()
     
     # Read the CSV into a list and sort in descending order of PR numbers
     with open("data/pull_requests_all.csv", mode="r", encoding="utf-8") as infile:
         reader = list(csv.DictReader(infile))
         reader.sort(key=lambda row: int(row["PR Number"]), reverse=True)
 
-    start_processing = False
-
     for row in reader:
         pr_number = int(row["PR Number"])
 
-        # Find the next smallest PR after `last_pr` to start processing
-        if not last_pr:
-            last_pr = pr_number  # Set last_pr if it's not set
-        else:
-            if pr_number < last_pr:
-                start_processing = True
+        # Skip PRs we've already processed
+        if last_processed_pr and pr_number >= last_processed_pr:
+            continue
 
-        # Start processing from the next smallest PR after `last_pr`
-        if start_processing:
+        # Collect PR data and checkbox data
+        try:
+            type_of_change = get_pr_checkbox_data(row["URL"])
+            pr_data = [
+                pr_number,
+                row["Title"],
+                row["Author"],
+                row["Integration"],
+                row["Created At"],
+                row["Updated At"],
+                row["State"],
+                row["Files Changed"],
+                row["Decision Time"],
+                row["Closed Date"],
+                row["URL"],
+                type_of_change,
+            ]
+            buffer.append(pr_data)  # Add PR data to buffer
 
-            # Collect PR data and checkbox data
-            try:
-                type_of_change = get_pr_checkbox_data(row["URL"])
-                pr_data = [
-                    pr_number,
-                    row["Title"],
-                    row["Author"],
-                    row["Integration"],
-                    row["Created At"],
-                    row["Updated At"],
-                    row["State"],
-                    row["Files Changed"],
-                    row["LOC Changed"],
-                    row["Total Comments"],
-                    row["Decision Time"],
-                    row["Closed Date"],
-                    row["URL"],
-                    type_of_change,
-                ]
-                buffer.append(pr_data)  # Add PR data to buffer
+            # Save buffer if it reaches the BATCH_SIZE
+            if len(buffer) >= BATCH_SIZE:
+                save_buffered_data()
 
-                # Save buffer if it reaches the BATCH_SIZE
-                if len(buffer) >= BATCH_SIZE:
-                    save_buffered_data()
+        
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            save_buffered_data()
 
-                # Save progress after each PR
-                time.sleep(0.5)
-            
-            except Exception as e:
-                print(f"Error occurred: {e}")
-                time.sleep(0.5)
 
     # Final save after all processing
     save_buffered_data()

@@ -4,7 +4,7 @@ import numpy as np
 
 SECONDARY_CHARACTERISTIC = 'LOC Changed'   # replace with 'Files Changed', 'Total Comments', 'LOC Changed' etc
 
-df = pd.read_csv("../data/pull_requests_filtered.csv")
+df = pd.read_csv("data/pull_requests_filtered.csv")
 new_feature_prs = df[df['Type of Change'].str.contains('New feature')]
 decision_times = new_feature_prs['Decision Time']
 secondary_characteristic = new_feature_prs[SECONDARY_CHARACTERISTIC]

@@ -8,9 +8,7 @@ import os
 
 load_dotenv()
 
-# List of tokens for rotation- can use `[os.environ.get("GITHUB_PAT_1"), os.environ.get("GITHUB_PAT_2"),...]` if using env variables
-tokens = [
-]
+tokens = os.environ.get("GITHUB_PATS").split(",")
 current_token_index = 0
 buffer = []  # Buffer for batching PR data
 BATCH_SIZE = 100  # Save every x PRs
@@ -71,7 +69,7 @@ def save_buffered_data():
             writer = csv.writer(file)
             if mode == "w":
                 writer.writerow(["PR Number", "Title", "Author", "Integration", "Created At", "Updated At", "State", 
-                                 "Files Changed", "LOC Changed", "Total Comments", "Decision Time", "Closed Date", "URL"])
+                                 "Files Changed", "Decision Time", "Closed Date", "URL"])
             writer.writerows(buffer)  # Write all buffered rows at once
         buffer.clear()  # Clear buffer after writing
 
@@ -91,6 +89,10 @@ def collect_pr_metadata():
             # Rotate token or wait if rate limit is exceeded
             g = handle_rate_limit(g)
 
+            # Skip already processed PRs
+            if (pr.number >= current_pr_number) and current_pr_number != 0:
+                continue
+
             # Skip PRs created after October 2024
             if pr.created_at > end_date:
                 continue
@@ -99,10 +101,6 @@ def collect_pr_metadata():
             if pr.created_at < start_date:
                 save_buffered_data()  # Save any remaining data in the buffer
                 return  # Exit function once we reach PRs created before 2021
-            
-            # Skip already processed PRs
-            if (pr.number >= current_pr_number) and current_pr_number != 0:
-                continue
             
             # Gather PR data
             pr_data = [
@@ -114,8 +112,6 @@ def collect_pr_metadata():
                 pr.updated_at, 
                 "merged" if pr.merged else "closed", 
                 pr.changed_files, 
-                sum([file.changes for file in pr.get_files()]),
-                len([comment for comment in pr.get_comments() + pr.get_issue_comments() if comment.user.type != "Bot"]), 
                 (pr.closed_at - pr.created_at).days, 
                 pr.closed_at,
                 pr.html_url
@@ -126,8 +122,6 @@ def collect_pr_metadata():
             if len(buffer) >= BATCH_SIZE:
                 save_buffered_data()
 
-
-            # print(f"Processed PR #{pr.number}")
             current_pr_number = pr.number  # Update last processed PR
 
     except Exception as e:
