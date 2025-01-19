@@ -18,7 +18,7 @@ from pydantic import BaseModel
 import pandas as pd
 
 load_dotenv()
-GITHUB_API_KEY = environ.get("GITHUB_PAT_1")
+GITHUB_API_KEY = environ.get("GITHUB_PAT")
 client = OpenAI()   # by default gets api key from env under OPENAI_API_KEY
 
 class CommentCategoriesExtraction(BaseModel):

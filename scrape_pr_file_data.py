@@ -50,6 +50,8 @@ def add_loc_to_df(df: pd.DataFrame) -> None:
             print(f"Error occurred: {e}")
             df['LOC Changed'] = loc_changed
             df.to_csv('data/pull_requests_filtered.csv', index=False)
+    
+    df['LOC Changed'] = loc_changed
 
 if __name__ == "__main__":
     df = pd.read_csv('data/pull_requests_filtered.csv')
