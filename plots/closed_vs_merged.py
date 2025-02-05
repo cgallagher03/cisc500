@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv("../data/pull_requests_filtered.csv")
+df = pd.read_csv("data/pull_requests_filtered.csv")
 
 merged_prs = df[df['State'] == 'merged']
 closed_prs = df[df['State'] == 'closed']
