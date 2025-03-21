@@ -49,5 +49,5 @@ plt.xlabel('Author is Codeowner')
 plt.ylabel('Decision Time (days)')
 plt.title('Decision Times for PRs: Author as Codeowner vs Not')
 
-plt.savefig('plot-images/decision_time_with_codeowners.png')
+# plt.savefig('plot-images/decision_time_with_codeowners.png')
 plt.show()
