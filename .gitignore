@@ -6,7 +6,3 @@
 
 .env
 .venv
-
-data/pull_requests_filtered_raw.csv
-
-models
